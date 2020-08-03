@@ -1,0 +1,133 @@
+---
+title: "taiwan-architects"
+author: "Ronnie"
+date: "8/3/2020"
+output: html_document
+editor_options:
+  chunk_output_type: console
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+```
+
+```{r include=FALSE}
+library(tidyverse)
+library(XML)
+library(ggthemes)
+library(patchwork)
+theme_set(theme_calc())
+# library(extrafont)
+# font_import()
+# loadfonts()
+theme<-theme_get()
+theme$text$family<-"STFangsong"
+```
+
+```{r}
+file_list <- list.files("./data", pattern = "*.xml") %>% 
+  map_chr(~ paste0("./data/", .x))
+file_list
+```
+
+```{r}
+file_name <- tail(file_list, 1)
+file_name
+```
+
+```{r}
+parse_my_file <- function(file_name) {
+  data <- xmlParse(file_name) %>% 
+    xmlToDataFrame() %>% 
+    as_tibble()
+  data <- data[, 1:12] # delete detailed regulation
+  colnames(data) <- c("issue_date", "designer", "construct_type",
+                    "structure_type", "zoning", "information", 
+                    "location", "plot", "area", "time_span",
+                    "cost", "supervisor")
+  return(data)
+}
+
+```
+
+```{r}
+data <- map(file_list, ~ parse_my_file(.x)) %>% bind_rows()
+data
+```
+
+```{r}
+data <- data %>% mutate(index = row_number()) %>% 
+  mutate(office = str_extract(designer, "\\((.*?)\\)")) %>% 
+  mutate(office = str_replace_all(office, "\\(|\\)|建築師事務所", "")) %>% 
+  mutate(year = str_extract(issue_date, "\\d{3}")) %>% 
+  mutate(area = as.numeric(str_extract(area, "\\d+\\.\\d{2}"))) 
+data
+```
+
+```{r}
+p1 <- data %>% count(year) %>% 
+  mutate(year = as.numeric(year)) %>%
+  ggplot(aes(year, n)) +
+  geom_line() +
+  labs(title = "Total Number of Construction License",
+       xlab = "Year") 
+```
+
+```{r}
+area_outliers <- boxplot(data$area)$out
+p2 <- data %>% 
+  mutate(year = as.numeric(year)) %>%
+  filter(!area %in% area_outliers) %>% 
+  group_by(year) %>% 
+  drop_na(year, area) %>% 
+  summarise(total_area = sum(area)) %>% 
+  ggplot(aes(year, total_area)) +
+  geom_line() +
+  labs(title = "Total Area",
+       subtitle = "removing outliers",
+       xlab = "Year")
+  
+```
+
+```{r}
+(p1 + p2)
+```
+
+```{r}
+p3 <- data %>% 
+  drop_na(year, office) %>% 
+  mutate(year = as.numeric(year)) %>% 
+  filter(year > 100) %>% 
+  count(office, sort = TRUE) %>% 
+  arrange(desc(n)) %>% 
+  ungroup() %>% 
+  top_n(30) %>% 
+  mutate(office = fct_inorder(office, n)) %>% 
+  ggplot(aes(office, n)) +
+  geom_col() +
+  coord_flip()
+```
+
+```{r}
+p4 <- data %>% 
+  mutate(year = as.numeric(year)) %>% 
+  filter(year > 100) %>% 
+  drop_na(area) %>% 
+  group_by(office) %>% 
+  summarise(total_area = sum(area)) %>% 
+  arrange(desc(total_area)) %>% 
+  ungroup() %>% 
+  top_n(30) %>% 
+  mutate(office = fct_inorder(office, total_area)) %>% 
+  ggplot(aes(office, total_area)) +
+  geom_col() +
+  coord_flip()
+```
+
+```{r}
+(p1 + p2) / (p3 + p4)
+```
+
+```{r}
+```
+
