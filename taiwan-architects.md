@@ -1,31 +1,15 @@
----
-title: "taiwan-architects"
-author: "Ronnie"
-date: "8/3/2020"
-output: github_document
-editor_options:
-  chunk_output_type: console
----
+taiwan-architects
+================
+Ronnie
+8/3/2020
 
-```{r, echo=FALSE}
-knitr::opts_chunk$set(error = TRUE)
-```
-
-```{r include=FALSE}
-library(tidyverse)
-library(XML)
-library(ggthemes)
-library(patchwork)
-theme_set(theme_calc())
-```
-
-```{r}
+``` r
 file_list <- list.files("./data", pattern = "*.xml") %>% 
   map_chr(~ paste0("./data/", .x))
 file_name <- tail(file_list, 1)
 ```
 
-```{r}
+``` r
 parse_my_file <- function(file_name) {
   data <- xmlParse(file_name) %>% 
     xmlToDataFrame() %>% 
@@ -37,22 +21,9 @@ parse_my_file <- function(file_name) {
                     "cost", "supervisor")
   return(data)
 }
-
 ```
 
-```{r warning=TRUE, include=FALSE}
-data <- map(file_list, ~ parse_my_file(.x)) %>% bind_rows()
-```
-
-```{r include=FALSE}
-data <- data %>% mutate(index = row_number()) %>% 
-  mutate(office = str_extract(designer, "\\((.*?)\\)")) %>% 
-  mutate(office = str_replace_all(office, "\\(|\\)|建築師事務所", "")) %>% 
-  mutate(year = str_extract(issue_date, "\\d{3}")) %>% 
-  mutate(area = as.numeric(str_extract(area, "\\d+\\.\\d{2}"))) 
-```
-
-```{r}
+``` r
 p1 <- data %>% count(year) %>% 
   mutate(year = as.numeric(year)) %>%
   ggplot(aes(year, n)) +
@@ -61,8 +32,13 @@ p1 <- data %>% count(year) %>%
        xlab = "Year") 
 ```
 
-```{r}
+``` r
 area_outliers <- boxplot(data$area)$out
+```
+
+![](taiwan-architects_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+``` r
 p2 <- data %>% 
   mutate(year = as.numeric(year)) %>%
   filter(!area %in% area_outliers) %>% 
@@ -74,14 +50,17 @@ p2 <- data %>%
   labs(title = "Total Area",
        subtitle = "removing outliers",
        xlab = "Year")
-  
 ```
 
-```{r}
+``` r
 (p1 + p2)
 ```
 
-```{r}
+    ## Warning: Removed 1 rows containing missing values (geom_path).
+
+![](taiwan-architects_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
 p3 <- data %>% 
   drop_na(year, office) %>% 
   mutate(year = as.numeric(year)) %>% 
@@ -96,7 +75,15 @@ p3 <- data %>%
   coord_flip()
 ```
 
-```{r}
+    ## Selecting by n
+
+    ## Warning in if (is.na(ordered)) {: the condition has length > 1 and only the
+    ## first element will be used
+
+    ## Warning in if (ordered) "ordered": the condition has length > 1 and only the
+    ## first element will be used
+
+``` r
 p4 <- data %>% 
   mutate(year = as.numeric(year)) %>% 
   filter(year > 100) %>% 
@@ -112,10 +99,16 @@ p4 <- data %>%
   coord_flip()
 ```
 
-```{r}
+    ## Selecting by total_area
+
+    ## Warning in if (is.na(ordered)) {: the condition has length > 1 and only the
+    ## first element will be used
+
+    ## Warning in if (ordered) "ordered": the condition has length > 1 and only the
+    ## first element will be used
+
+``` r
 (p3 + p4)
 ```
 
-```{r}
-```
-
+![](taiwan-architects_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
